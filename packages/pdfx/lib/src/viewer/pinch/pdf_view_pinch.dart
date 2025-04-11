@@ -99,7 +99,6 @@ class _PdfViewPinchState extends State<PdfViewPinch>
   bool _forceUpdatePagePreviews = true;
 
   // Add tap position for double tap functionality
-  bool _isZoomed = false;
   Offset _tapPosition = Offset.zero;
   final double _zoomedScale = 2.5; // Adjust as needed
 
@@ -516,55 +515,57 @@ class _PdfViewPinchState extends State<PdfViewPinch>
         _tapPosition = details.localPosition;
       },
       onDoubleTap: () {
-        setState(() {
-          _isZoomed = !_isZoomed;
-          if (!_isZoomed) {
-            // Get current scroll position and viewport size
-            final currentMatrix = _controller.value;
+        // Determine if we're already zoomed in
+        final currentScale = _controller.value.getMaxScaleOnAxis();
+        final isZoomed = currentScale >
+            _minScale + 0.1; // Threshold to determine zoomed state
 
-            // Get current translation
-            final currentTranslate = currentMatrix.getTranslation();
+        if (!isZoomed) {
+          // Get current scroll position and viewport size
+          final currentMatrix = _controller.value;
 
-            // Get tap position and adjust for current scroll
-            final tapX = _tapPosition.dx;
-            final tapY = _tapPosition.dy - currentTranslate.y;
+          // Get current translation
+          final currentTranslate = currentMatrix.getTranslation();
 
-            // Create transformation matrix
-            final matrix = Matrix4.identity()
-              ..translate(currentTranslate.x, currentTranslate.y)
-              ..translate(tapX, tapY)
-              ..scale(_zoomedScale)
-              ..translate(-tapX, -tapY);
+          // Get tap position and adjust for current scroll
+          final tapX = _tapPosition.dx;
+          final tapY = _tapPosition.dy - currentTranslate.y;
 
-            // Apply transformation with animation
-            _controller.goTo(
-              destination: matrix,
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
+          // Create transformation matrix
+          final matrix = Matrix4.identity()
+            ..translate(currentTranslate.x, currentTranslate.y)
+            ..translate(tapX, tapY)
+            ..scale(_zoomedScale)
+            ..translate(-tapX, -tapY);
+
+          // Apply transformation with animation
+          _controller.goTo(
+            destination: matrix,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+          );
+        } else {
+          // Zoom out - reset to fit the page
+          final currentMatrix = _controller.value;
+
+          // Get current translation
+          final currentTranslate = currentMatrix.getTranslation();
+
+          // Calculate the matrix to reset zoom but maintain position
+          // x should reset to 0 to center the page horizontally
+          final matrix = Matrix4.identity()
+            ..setTranslationRaw(
+              0,
+              (currentTranslate.y - (currentTranslate.y / _zoomedScale)) / 2,
+              currentTranslate.z,
             );
-          } else {
-            // Zoom out - reset to fit the page
-            final currentMatrix = _controller.value;
 
-            // Get current translation
-            final currentTranslate = currentMatrix.getTranslation();
-
-            // Calculate the matrix to reset zoom but maintain position
-            // x should reset to 0 to center the page horizontally
-            final matrix = Matrix4.identity()
-              ..setTranslationRaw(
-                0,
-                (currentTranslate.y - (currentTranslate.y / _zoomedScale)) / 2,
-                currentTranslate.z,
-              );
-
-            _goTo(
-              destination: matrix,
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInCubic,
-            );
-          }
-        });
+          _goTo(
+            destination: matrix,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInCubic,
+          );
+        }
       },
       child: widget.builders.builder(
         context,
