@@ -544,13 +544,6 @@ class _PdfViewPinchState extends State<PdfViewPinch>
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOutCubic,
           );
-
-          // Apply transformation with animation
-          _controller.goTo(
-            destination: matrix,
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOutCubic,
-          );
         } else {
           // Zoom out - reset to fit the page
           final currentMatrix = _controller.value;
