@@ -99,7 +99,7 @@ class _PdfViewPinchState extends State<PdfViewPinch>
   bool _forceUpdatePagePreviews = true;
 
   // Add tap position for double tap functionality
-  Offset? _tapPosition;
+  Offset _tapPosition = Offset.zero;
   final double _zoomedScale = 2.5; // Adjust as needed
 
   double get _padding => widget.padding;
@@ -580,16 +580,15 @@ class _PdfViewPinchState extends State<PdfViewPinch>
                 _minScale + 0.1; // Threshold to determine zoomed state
 
             if (!isZoomed) {
-              // Zoom in - centered on tap position
-              if (_tapPosition == null) return;
-
-              // Get current matrix and translation
+              // Get current scroll position and viewport size
               final currentMatrix = _controller.value;
+
+              // Get current translation
               final currentTranslate = currentMatrix.getTranslation();
 
-              // Calculate the tap position
-              final tapX = _tapPosition!.dx;
-              final tapY = _tapPosition!.dy;
+              // Get tap position and adjust for current scroll
+              final tapX = _tapPosition.dx;
+              final tapY = _tapPosition.dy - currentTranslate.y;
 
               // Create transformation matrix
               final matrix = Matrix4.identity()
@@ -599,7 +598,14 @@ class _PdfViewPinchState extends State<PdfViewPinch>
                 ..translate(-tapX, -tapY);
 
               // Apply transformation with animation
-              _goTo(
+              _controller.goTo(
+                destination: matrix,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+              );
+
+              // Apply transformation with animation
+              _controller.goTo(
                 destination: matrix,
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeOutCubic,
