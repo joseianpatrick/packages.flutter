@@ -98,6 +98,10 @@ class _PdfViewPinchState extends State<PdfViewPinch>
   bool _firstControllerAttach = true;
   bool _forceUpdatePagePreviews = true;
 
+  // Add tap position for double tap functionality
+  Offset? _tapPosition;
+  final double _zoomedScale = 2.5; // Adjust as needed
+
   double get _padding => widget.padding;
   double get _minScale => widget.minScale;
   double get _maxScale => widget.maxScale;
@@ -563,24 +567,86 @@ class _PdfViewPinchState extends State<PdfViewPinch>
         final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
         _reLayout(viewSize);
         final docSize = _docSize ?? const Size(10, 10); // dummy size
-        return InteractiveViewer(
-          transformationController: _controller,
-          scrollControls: InteractiveViewerScrollControls.scrollPans,
-          constrained: false,
-          alignPanAxis: false,
-          boundaryMargin: _minScale < 1
-              ? const EdgeInsets.all(double.infinity)
-              : EdgeInsets.zero,
-          minScale: _minScale,
-          maxScale: _maxScale,
-          panEnabled: true,
-          scaleEnabled: true,
-          child: SafeArea(
-            child: Stack(
-              children: <Widget>[
-                SizedBox(width: docSize.width, height: docSize.height),
-                ...iterateLaidOutPages(viewSize)
-              ],
+
+        return GestureDetector(
+          onDoubleTapDown: (details) {
+            // Store the tap position when double tap starts
+            _tapPosition = details.localPosition;
+          },
+          onDoubleTap: () {
+            // Determine if we're already zoomed in
+            final currentScale = _controller.value.getMaxScaleOnAxis();
+            final isZoomed = currentScale >
+                _minScale + 0.1; // Threshold to determine zoomed state
+
+            if (!isZoomed) {
+              // Zoom in - centered on tap position
+              if (_tapPosition == null) return;
+
+              // Get current matrix and translation
+              final currentMatrix = _controller.value;
+              final currentTranslate = currentMatrix.getTranslation();
+
+              // Calculate the tap position
+              final tapX = _tapPosition!.dx;
+              final tapY = _tapPosition!.dy;
+
+              // Create transformation matrix
+              final matrix = Matrix4.identity()
+                ..translate(currentTranslate.x, currentTranslate.y)
+                ..translate(tapX, tapY)
+                ..scale(_zoomedScale)
+                ..translate(-tapX, -tapY);
+
+              // Apply transformation with animation
+              _goTo(
+                destination: matrix,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+              );
+            } else {
+              // Zoom out - reset to fit the page
+              final currentMatrix = _controller.value;
+
+              // Get current translation
+              final currentTranslate = currentMatrix.getTranslation();
+
+              // Calculate the matrix to reset zoom but maintain position
+              // x should reset to 0 to center the page horizontally
+              final matrix = Matrix4.identity()
+                ..setTranslationRaw(
+                  0,
+                  (currentTranslate.y - (currentTranslate.y / _zoomedScale)) /
+                      2,
+                  currentTranslate.z,
+                );
+
+              _goTo(
+                destination: matrix,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInCubic,
+              );
+            }
+          },
+          child: InteractiveViewer(
+            transformationController: _controller,
+            scrollControls: InteractiveViewerScrollControls.scrollPans,
+            constrained: false,
+            alignPanAxis: false,
+            boundaryMargin: _minScale < 1
+                ? const EdgeInsets.all(double.infinity)
+                : EdgeInsets.zero,
+            minScale: _minScale,
+            maxScale: _maxScale,
+            panEnabled: true,
+            scaleEnabled: true,
+            child: SafeArea(
+              child: Stack(
+                children: <Widget>[
+                  SizedBox(width: docSize.width, height: docSize.height),
+                  ...iterateLaidOutPages(viewSize)
+                ],
+              ),
             ),
           ),
         );
