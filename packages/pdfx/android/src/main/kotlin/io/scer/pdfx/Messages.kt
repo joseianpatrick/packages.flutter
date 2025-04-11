@@ -280,7 +280,7 @@ class Messages(private val binding : FlutterPlugin.FlutterPluginBinding,
                 if (backgroundColor != null) {
                     bmp.eraseColor(Color.parseColor(backgroundColor))
                 }
-                page.render(bmp, null, mat, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                page.render(bmp, null, mat, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY, false)
 
                 val texWidth = message.textureWidth!!.toInt()
                 val texHeight = message.textureHeight!!.toInt()
