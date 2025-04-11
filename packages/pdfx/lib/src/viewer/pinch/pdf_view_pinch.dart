@@ -539,7 +539,7 @@ class _PdfViewPinchState extends State<PdfViewPinch>
             ..translate(-tapX, -tapY);
 
           // Apply transformation with animation
-          _controller.goTo(
+          _goTo(
             destination: matrix,
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOutCubic,
