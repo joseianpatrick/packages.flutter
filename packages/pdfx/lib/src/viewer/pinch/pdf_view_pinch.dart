@@ -509,13 +509,79 @@ class _PdfViewPinchState extends State<PdfViewPinch>
 
   @override
   Widget build(BuildContext context) {
-    return widget.builders.builder(
-      context,
-      widget.builders,
-      _controller.loadingState.value,
-      _buildLoaded,
-      widget.controller._document,
-      _loadingError,
+    return GestureDetector(
+      onDoubleTapDown: (details) {
+        // Store the tap position when double tap starts
+        _tapPosition = details.localPosition;
+      },
+      onDoubleTap: () {
+        // Determine if we're already zoomed in
+        final currentScale = _controller.value.getMaxScaleOnAxis();
+        final isZoomed = currentScale >
+            _minScale + 0.1; // Threshold to determine zoomed state
+
+        if (!isZoomed) {
+          // Get current scroll position and viewport size
+          final currentMatrix = _controller.value;
+
+          // Get current translation
+          final currentTranslate = currentMatrix.getTranslation();
+
+          // Get tap position and adjust for current scroll
+          final tapX = _tapPosition.dx;
+          final tapY = _tapPosition.dy - currentTranslate.y;
+
+          // Create transformation matrix
+          final matrix = Matrix4.identity()
+            ..translate(currentTranslate.x, currentTranslate.y)
+            ..translate(tapX, tapY)
+            ..scale(_zoomedScale)
+            ..translate(-tapX, -tapY);
+
+          // Apply transformation with animation
+          _controller.goTo(
+            destination: matrix,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+          );
+
+          // Apply transformation with animation
+          _controller.goTo(
+            destination: matrix,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+          );
+        } else {
+          // Zoom out - reset to fit the page
+          final currentMatrix = _controller.value;
+
+          // Get current translation
+          final currentTranslate = currentMatrix.getTranslation();
+
+          // Calculate the matrix to reset zoom but maintain position
+          // x should reset to 0 to center the page horizontally
+          final matrix = Matrix4.identity()
+            ..setTranslationRaw(
+              0,
+              (currentTranslate.y - (currentTranslate.y / _zoomedScale)) / 2,
+              currentTranslate.z,
+            );
+
+          _goTo(
+            destination: matrix,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInCubic,
+          );
+        }
+      },
+      child: widget.builders.builder(
+        context,
+        widget.builders,
+        _controller.loadingState.value,
+        _buildLoaded,
+        widget.controller._document,
+        _loadingError,
+      ),
     );
   }
 
@@ -568,91 +634,24 @@ class _PdfViewPinchState extends State<PdfViewPinch>
         _reLayout(viewSize);
         final docSize = _docSize ?? const Size(10, 10); // dummy size
 
-        return GestureDetector(
-          onDoubleTapDown: (details) {
-            // Store the tap position when double tap starts
-            _tapPosition = details.localPosition;
-          },
-          onDoubleTap: () {
-            // Determine if we're already zoomed in
-            final currentScale = _controller.value.getMaxScaleOnAxis();
-            final isZoomed = currentScale >
-                _minScale + 0.1; // Threshold to determine zoomed state
-
-            if (!isZoomed) {
-              // Get current scroll position and viewport size
-              final currentMatrix = _controller.value;
-
-              // Get current translation
-              final currentTranslate = currentMatrix.getTranslation();
-
-              // Get tap position and adjust for current scroll
-              final tapX = _tapPosition.dx;
-              final tapY = _tapPosition.dy - currentTranslate.y;
-
-              // Create transformation matrix
-              final matrix = Matrix4.identity()
-                ..translate(currentTranslate.x, currentTranslate.y)
-                ..translate(tapX, tapY)
-                ..scale(_zoomedScale)
-                ..translate(-tapX, -tapY);
-
-              // Apply transformation with animation
-              _controller.goTo(
-                destination: matrix,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-              );
-
-              // Apply transformation with animation
-              _controller.goTo(
-                destination: matrix,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-              );
-            } else {
-              // Zoom out - reset to fit the page
-              final currentMatrix = _controller.value;
-
-              // Get current translation
-              final currentTranslate = currentMatrix.getTranslation();
-
-              // Calculate the matrix to reset zoom but maintain position
-              // x should reset to 0 to center the page horizontally
-              final matrix = Matrix4.identity()
-                ..setTranslationRaw(
-                  0,
-                  (currentTranslate.y - (currentTranslate.y / _zoomedScale)) /
-                      2,
-                  currentTranslate.z,
-                );
-
-              _goTo(
-                destination: matrix,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInCubic,
-              );
-            }
-          },
-          child: InteractiveViewer(
-            transformationController: _controller,
-            scrollControls: InteractiveViewerScrollControls.scrollPans,
-            constrained: false,
-            alignPanAxis: false,
-            boundaryMargin: _minScale < 1
-                ? const EdgeInsets.all(double.infinity)
-                : EdgeInsets.zero,
-            minScale: _minScale,
-            maxScale: _maxScale,
-            panEnabled: true,
-            scaleEnabled: true,
-            child: SafeArea(
-              child: Stack(
-                children: <Widget>[
-                  SizedBox(width: docSize.width, height: docSize.height),
-                  ...iterateLaidOutPages(viewSize)
-                ],
-              ),
+        return InteractiveViewer(
+          transformationController: _controller,
+          scrollControls: InteractiveViewerScrollControls.scrollPans,
+          constrained: false,
+          alignPanAxis: false,
+          boundaryMargin: _minScale < 1
+              ? const EdgeInsets.all(double.infinity)
+              : EdgeInsets.zero,
+          minScale: _minScale,
+          maxScale: _maxScale,
+          panEnabled: true,
+          scaleEnabled: true,
+          child: SafeArea(
+            child: Stack(
+              children: <Widget>[
+                SizedBox(width: docSize.width, height: docSize.height),
+                ...iterateLaidOutPages(viewSize)
+              ],
             ),
           ),
         );
