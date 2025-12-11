@@ -198,6 +198,7 @@ class _PdfViewPinchState extends State<PdfViewPinch>
     if (_pages.isEmpty) {
       return;
     }
+    debugPrint('_reLayout called | viewSize=$viewSize');
     // if (widget.params?.layoutPages == null) {
     _reLayoutDefault(viewSize!);
     // } else {
@@ -331,6 +332,8 @@ class _PdfViewPinchState extends State<PdfViewPinch>
 
     _cancelLastRealSizeUpdate();
 
+    debugPrint(
+        '_determinePagesToShow | changeCount=$changeCount | pagesToUpdate=$pagesToUpdate | _forceUpdatePagePreviews=$_forceUpdatePagePreviews');
     if (changeCount > 0) {
       _needReLayout();
     }
@@ -347,6 +350,7 @@ class _PdfViewPinchState extends State<PdfViewPinch>
   }
 
   void _needReLayout() {
+    debugPrint('_needReLayout called -> triggering setState');
     Future.delayed(Duration.zero, () => setState(() {}));
   }
 
@@ -510,6 +514,7 @@ class _PdfViewPinchState extends State<PdfViewPinch>
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('PdfViewPinch.build called');
     return GestureDetector(
       onDoubleTapDown: (details) {
         // Store the tap position when double tap starts
@@ -623,6 +628,7 @@ class _PdfViewPinchState extends State<PdfViewPinch>
   }
 
   Widget _buildLoaded(BuildContext context) {
+    debugPrint('_buildLoaded called');
     Future.microtask(_handlePendedPageDisposes);
     return LayoutBuilder(
       builder: (context, constraints) {
