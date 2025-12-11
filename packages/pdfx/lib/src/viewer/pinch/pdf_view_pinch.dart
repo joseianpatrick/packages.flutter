@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart'
     hide InteractiveViewer, TransformationController;
 import 'package:pdfx/src/renderer/interfaces/document.dart';
@@ -586,6 +587,8 @@ class _PdfViewPinchState extends State<PdfViewPinch>
     PdfDocument? document,
     Exception? loadingError,
   ) {
+    debugPrint(
+        'PdfViewPinch._builder rebuild | state=$state | doc=${document?.id}');
     final Widget content = () {
       switch (state) {
         case PdfLoadingState.loading:
@@ -668,8 +671,8 @@ class _PdfViewPinchState extends State<PdfViewPinch>
         final pageRectZoomed = Rect.fromLTRB(page.rect!.left * r,
             page.rect!.top * r, page.rect!.right * r, page.rect!.bottom * r);
         final part = pageRectZoomed.intersect(exposed);
-        page.isVisibleInsideView = !part.isEmpty;
-        if (!page.isVisibleInsideView) {
+        final isVisible = !part.isEmpty;
+        if (!isVisible) {
           continue;
         }
 
